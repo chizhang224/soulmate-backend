@@ -13,7 +13,7 @@ class EmailSender:
     def send_full_report(self, to_email, name, report_data, chart_data):
         """发送完整报告"""
         
-        subject = f"✨ {name}, Your Soulmate Reading is Ready!"
+        subject = f"Your Soulmate Reading is Ready, {name}!"
         
         html_content = self._build_email_html(name, report_data, chart_data)
         
@@ -41,7 +41,7 @@ class EmailSender:
     <meta charset="utf-8">
     <style>
         body {{
-            font-family: 'Georgia', serif;
+            font-family: Georgia, serif;
             line-height: 1.8;
             color: #333;
             max-width: 600px;
@@ -78,7 +78,7 @@ class EmailSender:
 </head>
 <body>
     <div class="container">
-        <h1>✨ Your Soulmate Reading ✨</h1>
+        <h1>Your Soulmate Reading</h1>
         <p style="text-align:center">Personalized for {name}</p>
         
         <div style="text-align:center; margin:20px 0">
@@ -86,64 +86,49 @@ class EmailSender:
         </div>
         
         <div class="section">
-            <div class="section-title">💫 Your Love Style</div>
+            <div class="section-title">Your Love Style</div>
             <p>{report_data['personality_analysis']}</p>
         </div>
         
         <div class="section">
-            <div class="section-title">💖 How You Approach Love</div>
+            <div class="section-title">How You Approach Love</div>
             <p>{report_data['love_approach']}</p>
         </div>
         
         <div class="section">
-            <div class="section-title">👤 Physical Appearance</div>
+            <div class="section-title">Physical Appearance</div>
             <p>{report_data['soulmate_appearance']}</p>
         </div>
         
         <div class="section">
-            <div class="section-title">✨ Personality Traits</div>
+            <div class="section-title">Personality Traits</div>
             <p>{report_data['soulmate_personality']}</p>
         </div>
         
         <div class="section">
-            <div class="section-title">💼 Career & Lifestyle</div>
+            <div class="section-title">Career and Lifestyle</div>
             <p>{report_data['soulmate_career']}</p>
         </div>
         
         <div class="section">
-            <div class="section-title">📍 Where You'll Meet</div>
+            <div class="section-title">Where You Will Meet</div>
             <p>{report_data['meeting_places']}</p>
         </div>
         
         <div class="section">
-            <div class="section-title">📅 Best Timing in 2025</div>
+            <div class="section-title">Best Timing in 2025</div>
             <p>{report_data['best_timing']}</p>
         </div>
         
         <div class="section">
-            <div class="section-title">💡 Compatibility Tips</div>
+            <div class="section-title">Compatibility Tips</div>
             <p>{report_data['compatibility_tips']}</p>
         </div>
         
         <p style="text-align:center; color:#888; margin-top:40px">
-            © 2025 Soulmate Astrology
+            2025 Soulmate Astrology
         </p>
     </div>
 </body>
 </html>
         """
-```
-
----
-
-## 📁 最终文件结构
-```
-soulmate-backend/
-├── app.py
-├── requirements.txt
-├── runtime.txt
-├── .env.example
-├── astro_calculator.py
-├── report_generator.py
-├── email_sender.py
-└── readings/  (空文件夹)
