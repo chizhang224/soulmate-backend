@@ -173,5 +173,5 @@ soft bokeh background, cinematic quality, photo-realistic"""
         keep_count = max(3, int(len(words) * keep_ratio))
         visible = ' '.join(words[:keep_count])
         return f"{visible} ███████ (Unlock to reveal)"
-```
+
 
