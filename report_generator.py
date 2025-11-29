@@ -1,107 +1,71 @@
-import openai
+import requests
 import os
+import json
 
 class ReportGenerator:
-    """使用ChatGPT和DALL-E生成占星报告"""
-    
     def __init__(self, api_key=None):
         self.api_key = api_key or os.getenv('OPENAI_API_KEY')
-        # 设置全局API key
-        openai.api_key = self.api_key
+        self.base_url = "https://api.openai.com/v1"
     
     def generate_full_report_with_image(self, chart_data, gender='female'):
-        """生成完整报告（文字 + 图片）"""
         text_report = self._generate_text_report(chart_data, gender)
-        image_url = self._generate_soulmate_image(
-            text_report['soulmate_appearance'], 
-            gender
-        )
-        
-        return {
-            **text_report,
-            'hd_image_url': image_url,
-            'blur_image_url': image_url
-        }
+        image_url = self._generate_soulmate_image(text_report['soulmate_appearance'], gender)
+        return {**text_report, 'hd_image_url': image_url, 'blur_image_url': image_url}
     
     def _generate_text_report(self, chart_data, gender):
-        """生成文字报告"""
         prompt = self._build_prompt(chart_data, gender)
-        
         try:
-            # 使用全局方式调用，不创建client实例
-            response = openai.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are a professional astrologer. Be specific, warm, mystical but modern. Output in English only."
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+            data = {
+                "model": "gpt-4o-mini",
+                "messages": [
+                    {"role": "system", "content": "You are a professional astrologer. Be specific, warm, mystical. Output in English only."},
+                    {"role": "user", "content": prompt}
                 ],
-                temperature=0.8,
-                max_tokens=2000
-            )
-            
-            content = response.choices[0].message.content
+                "temperature": 0.8,
+                "max_tokens": 2000
+            }
+            response = requests.post(f"{self.base_url}/chat/completions", headers=headers, json=data, timeout=60)
+            response.raise_for_status()
+            content = response.json()['choices'][0]['message']['content']
             return self._parse_response(content)
-            
         except Exception as e:
             raise Exception(f"AI report generation failed: {str(e)}")
     
     def _build_prompt(self, chart_data, gender):
-        """构建prompt"""
-        return f"""Based on this birth chart, create a detailed soulmate profile.
+        return f"""Based on this birth chart, create a soulmate profile.
 
-Chart Data:
-- Sun in {chart_data['sun']['sign']} (House {chart_data['sun']['house']})
-- Moon in {chart_data['moon']['sign']} (House {chart_data['moon']['house']})
-- Venus in {chart_data['venus']['sign']} (House {chart_data['venus']['house']})
-- Mars in {chart_data['mars']['sign']}
-- Rising in {chart_data['rising']['sign']}
-- 7th House in {chart_data['house7']['sign']}
+Chart: Sun {chart_data['sun']['sign']}, Moon {chart_data['moon']['sign']}, Venus {chart_data['venus']['sign']}, Mars {chart_data['mars']['sign']}, Rising {chart_data['rising']['sign']}, 7th House {chart_data['house7']['sign']}
 
 User gender: {gender}
 
-Generate in EXACT format:
-
+Format:
 ## PERSONALITY_ANALYSIS ##
 (2-3 sentences)
-
 ## LOVE_APPROACH ##
 (3-4 sentences)
-
 ## SOULMATE_APPEARANCE ##
-(4-5 sentences, specific details)
-
+(4-5 sentences, specific)
 ## SOULMATE_PERSONALITY ##
 (5-6 traits)
-
 ## SOULMATE_CAREER ##
 (4-5 fields)
-
 ## MEETING_PLACES ##
 (5-6 places)
-
 ## BEST_TIMING ##
 (2-3 months in 2025)
-
 ## COMPATIBILITY_TIPS ##
-(3-4 tips)
-
-Be specific and personal."""
+(3-4 tips)"""
     
     def _parse_response(self, content):
-        """解析GPT回复"""
         sections = {}
         current_section = None
         current_content = []
-        
         for line in content.split('\n'):
             line = line.strip()
-            
             if line.startswith('##') and line.endswith('##'):
                 if current_section:
                     sections[current_section] = '\n'.join(current_content).strip()
@@ -110,10 +74,8 @@ Be specific and personal."""
             else:
                 if line:
                     current_content.append(line)
-        
         if current_section:
             sections[current_section] = '\n'.join(current_content).strip()
-        
         return {
             'personality_analysis': sections.get('personality_analysis', ''),
             'love_approach': sections.get('love_approach', ''),
@@ -126,52 +88,44 @@ Be specific and personal."""
         }
     
     def _generate_soulmate_image(self, appearance_description, gender):
-        """使用DALL-E生成图片"""
-        if gender == 'female':
-            base_prompt = "Portrait photo of an attractive man, "
-        else:
-            base_prompt = "Portrait photo of an attractive woman, "
-        
-        key_features = appearance_description[:200]
-        full_prompt = f"""{base_prompt}{key_features}
-Professional photography, natural lighting, warm smile, 
-soft bokeh background, cinematic quality, photo-realistic"""
-        
+        base_prompt = "Portrait photo of an attractive man, " if gender == 'female' else "Portrait photo of an attractive woman, "
+        key_features = appearance_description[:200] if appearance_description else "warm smile, kind eyes"
+        full_prompt = f"{base_prompt}{key_features} Professional photography, natural lighting, warm smile, soft bokeh background, cinematic quality, photo-realistic"
         try:
-            # 使用全局方式调用
-            response = openai.images.generate(
-                model="dall-e-3",
-                prompt=full_prompt,
-                size="1024x1024",
-                quality="standard",
-                n=1
-            )
-            return response.data[0].url
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+            data = {
+                "model": "dall-e-3",
+                "prompt": full_prompt,
+                "size": "1024x1024",
+                "quality": "standard",
+                "n": 1
+            }
+            response = requests.post(f"{self.base_url}/images/generations", headers=headers, json=data, timeout=60)
+            response.raise_for_status()
+            return response.json()['data'][0]['url']
         except Exception as e:
             print(f"Image generation failed: {str(e)}")
             return "https://via.placeholder.com/1024x1024?text=Soulmate"
     
     def create_preview_from_full(self, full_data):
-        """创建预览版本"""
         return {
             'personality_analysis': full_data['personality_analysis'],
-            'love_approach': full_data['love_approach'][:200] + "...",
+            'love_approach': full_data['love_approach'][:200] + "..." if len(full_data.get('love_approach', '')) > 200 else full_data.get('love_approach', ''),
             'soulmate_appearance': self._blur_text(full_data['soulmate_appearance']),
             'soulmate_personality': self._blur_text(full_data['soulmate_personality']),
-            'soulmate_career': "███████ (Unlock to reveal)",
-            'meeting_places': "███████ (Unlock to reveal)",
-            'best_timing': "2025 ██月 (Unlock to reveal)",
-            'compatibility_tips': self._blur_text(full_data['compatibility_tips'], 0.3),
+            'soulmate_career': "Unlock to reveal",
+            'meeting_places': "Unlock to reveal",
+            'best_timing': "2025 (Unlock to reveal)",
+            'compatibility_tips': self._blur_text(full_data.get('compatibility_tips', ''), 0.3),
             'blur_image_url': full_data['blur_image_url']
         }
     
     def _blur_text(self, text, keep_ratio=0.4):
-        """模糊文本"""
         if not text:
-            return "███ (Unlock to reveal)"
+            return "Unlock to reveal"
         words = text.split()
         keep_count = max(3, int(len(words) * keep_ratio))
-        visible = ' '.join(words[:keep_count])
-        return f"{visible} ███████ (Unlock to reveal)"
-
-
+        return ' '.join(words[:keep_count]) + " (Unlock to reveal)"
