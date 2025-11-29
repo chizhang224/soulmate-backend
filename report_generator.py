@@ -6,14 +6,10 @@ class ReportGenerator:
     
     def __init__(self, api_key=None):
         self.api_key = api_key or os.getenv('OPENAI_API_KEY')
-        self.client = OpenAI(api_key=self.api_key)
     
     def generate_full_report_with_image(self, chart_data, gender='female'):
         """生成完整报告（文字 + 图片）"""
-        # 1. 生成文字报告
         text_report = self._generate_text_report(chart_data, gender)
-        
-        # 2. 生成AI图片
         image_url = self._generate_soulmate_image(
             text_report['soulmate_appearance'], 
             gender
@@ -30,19 +26,15 @@ class ReportGenerator:
         prompt = self._build_prompt(chart_data, gender)
         
         try:
-            response = self.client.chat.completions.create(
+            client = OpenAI(api_key=self.api_key)
+            response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
                     {
                         "role": "system",
                         "content": """You are a professional astrologer specializing in soulmate readings.
-Your style:
-- Specific and detailed (not vague)
-- Warm and empathetic
-- Mystical but modern
-- Focus on actionable insights
-
-IMPORTANT: Output in English only."""
+Your style: Specific and detailed, warm and empathetic, mystical but modern.
+Output in English only."""
                     },
                     {
                         "role": "user",
@@ -73,38 +65,33 @@ Chart Data:
 
 User gender: {gender}
 
-Generate a soulmate profile in this EXACT format:
+Generate in this EXACT format:
 
 ## PERSONALITY_ANALYSIS ##
-(2-3 sentences about their love style and emotional needs)
+(2-3 sentences)
 
 ## LOVE_APPROACH ##
-(3-4 sentences about how they express love and what they seek)
+(3-4 sentences)
 
 ## SOULMATE_APPEARANCE ##
-(4-5 sentences with specific physical details: height, build, eyes, hair, style, overall vibe)
+(4-5 sentences with specific details)
 
 ## SOULMATE_PERSONALITY ##
-(5-6 specific personality traits with brief explanations)
+(5-6 traits)
 
 ## SOULMATE_CAREER ##
-(List 4-5 specific career fields or job types)
+(4-5 fields)
 
 ## MEETING_PLACES ##
-(List 5-6 specific places or scenarios where they might meet)
+(5-6 places)
 
 ## BEST_TIMING ##
-(Identify 2-3 months in 2025 with brief astrological reasoning)
+(2-3 months in 2025)
 
 ## COMPATIBILITY_TIPS ##
-(3-4 specific tips for building a lasting connection)
+(3-4 tips)
 
-Requirements:
-- Be SPECIFIC (not "tall" but "5'10\"-6'1\"")
-- Avoid generic advice
-- Make it feel personal and unique
-- Use vivid, concrete language
-- All content in English"""
+Be specific, personal, vivid."""
     
     def _parse_response(self, content):
         """解析GPT回复"""
@@ -118,7 +105,6 @@ Requirements:
             if line.startswith('##') and line.endswith('##'):
                 if current_section:
                     sections[current_section] = '\n'.join(current_content).strip()
-                
                 current_section = line.replace('#', '').strip().lower().replace(' ', '_')
                 current_content = []
             else:
@@ -147,23 +133,20 @@ Requirements:
             base_prompt = "Portrait photo of an attractive woman, "
         
         key_features = appearance_description[:200]
-        
         full_prompt = f"""{base_prompt}{key_features}
-Professional photography, natural lighting, warm genuine smile,
-looking at camera, soft bokeh background, cinematic quality,
-intimate atmosphere, 35mm lens, photo-realistic"""
+Professional photography, natural lighting, warm smile, looking at camera, 
+soft bokeh background, cinematic quality, photo-realistic"""
         
         try:
-            response = self.client.images.generate(
+            client = OpenAI(api_key=self.api_key)
+            response = client.images.generate(
                 model="dall-e-3",
                 prompt=full_prompt,
                 size="1024x1024",
                 quality="standard",
                 n=1
             )
-            
             return response.data[0].url
-            
         except Exception as e:
             print(f"Image generation failed: {str(e)}")
             return "https://via.placeholder.com/1024x1024?text=Soulmate+Portrait"
@@ -186,9 +169,7 @@ intimate atmosphere, 35mm lens, photo-realistic"""
         """部分模糊文本"""
         if not text:
             return "███ (Unlock to reveal)"
-        
         words = text.split()
         keep_count = max(3, int(len(words) * keep_ratio))
-        
         visible = ' '.join(words[:keep_count])
         return f"{visible} ███████ (Unlock to reveal)"
