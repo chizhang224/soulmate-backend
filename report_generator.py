@@ -1,4 +1,4 @@
-from openai import OpenAI
+import openai
 import os
 
 class ReportGenerator:
@@ -6,6 +6,8 @@ class ReportGenerator:
     
     def __init__(self, api_key=None):
         self.api_key = api_key or os.getenv('OPENAI_API_KEY')
+        # 设置全局API key
+        openai.api_key = self.api_key
     
     def generate_full_report_with_image(self, chart_data, gender='female'):
         """生成完整报告（文字 + 图片）"""
@@ -26,15 +28,13 @@ class ReportGenerator:
         prompt = self._build_prompt(chart_data, gender)
         
         try:
-            client = OpenAI(api_key=self.api_key)
-            response = client.chat.completions.create(
+            # 使用全局方式调用，不创建client实例
+            response = openai.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
                     {
                         "role": "system",
-                        "content": """You are a professional astrologer specializing in soulmate readings.
-Your style: Specific and detailed, warm and empathetic, mystical but modern.
-Output in English only."""
+                        "content": "You are a professional astrologer. Be specific, warm, mystical but modern. Output in English only."
                     },
                     {
                         "role": "user",
@@ -65,7 +65,7 @@ Chart Data:
 
 User gender: {gender}
 
-Generate in this EXACT format:
+Generate in EXACT format:
 
 ## PERSONALITY_ANALYSIS ##
 (2-3 sentences)
@@ -74,7 +74,7 @@ Generate in this EXACT format:
 (3-4 sentences)
 
 ## SOULMATE_APPEARANCE ##
-(4-5 sentences with specific details)
+(4-5 sentences, specific details)
 
 ## SOULMATE_PERSONALITY ##
 (5-6 traits)
@@ -91,7 +91,7 @@ Generate in this EXACT format:
 ## COMPATIBILITY_TIPS ##
 (3-4 tips)
 
-Be specific, personal, vivid."""
+Be specific and personal."""
     
     def _parse_response(self, content):
         """解析GPT回复"""
@@ -134,12 +134,12 @@ Be specific, personal, vivid."""
         
         key_features = appearance_description[:200]
         full_prompt = f"""{base_prompt}{key_features}
-Professional photography, natural lighting, warm smile, looking at camera, 
+Professional photography, natural lighting, warm smile, 
 soft bokeh background, cinematic quality, photo-realistic"""
         
         try:
-            client = OpenAI(api_key=self.api_key)
-            response = client.images.generate(
+            # 使用全局方式调用
+            response = openai.images.generate(
                 model="dall-e-3",
                 prompt=full_prompt,
                 size="1024x1024",
@@ -149,10 +149,10 @@ soft bokeh background, cinematic quality, photo-realistic"""
             return response.data[0].url
         except Exception as e:
             print(f"Image generation failed: {str(e)}")
-            return "https://via.placeholder.com/1024x1024?text=Soulmate+Portrait"
+            return "https://via.placeholder.com/1024x1024?text=Soulmate"
     
     def create_preview_from_full(self, full_data):
-        """从完整报告创建预览版本"""
+        """创建预览版本"""
         return {
             'personality_analysis': full_data['personality_analysis'],
             'love_approach': full_data['love_approach'][:200] + "...",
@@ -160,16 +160,18 @@ soft bokeh background, cinematic quality, photo-realistic"""
             'soulmate_personality': self._blur_text(full_data['soulmate_personality']),
             'soulmate_career': "███████ (Unlock to reveal)",
             'meeting_places': "███████ (Unlock to reveal)",
-            'best_timing': "2025年██月 (Unlock to reveal)",
+            'best_timing': "2025 ██月 (Unlock to reveal)",
             'compatibility_tips': self._blur_text(full_data['compatibility_tips'], 0.3),
             'blur_image_url': full_data['blur_image_url']
         }
     
     def _blur_text(self, text, keep_ratio=0.4):
-        """部分模糊文本"""
+        """模糊文本"""
         if not text:
             return "███ (Unlock to reveal)"
         words = text.split()
         keep_count = max(3, int(len(words) * keep_ratio))
         visible = ' '.join(words[:keep_count])
         return f"{visible} ███████ (Unlock to reveal)"
+```
+
