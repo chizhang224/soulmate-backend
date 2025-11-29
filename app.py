@@ -14,7 +14,14 @@ from email_sender import EmailSender
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)  # 允许跨域
+CORS(app, resources={
+    r"/api/*": {
+        "origins": [
+            "https://soulmate-frontend-rrfb.vercel.app",
+            "http://localhost:*"
+        ]
+    }
+})
 
 # 初始化服务
 calculator = AstroCalculator()
