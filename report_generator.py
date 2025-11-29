@@ -1,4 +1,4 @@
-import openai
+from openai import OpenAI
 import os
 
 class ReportGenerator:
@@ -6,12 +6,10 @@ class ReportGenerator:
     
     def __init__(self, api_key=None):
         self.api_key = api_key or os.getenv('OPENAI_API_KEY')
-        openai.api_key = self.api_key
+        self.client = OpenAI(api_key=self.api_key)
     
     def generate_full_report_with_image(self, chart_data, gender='female'):
-        """
-        生成完整报告（文字 + 图片）
-        """
+        """生成完整报告（文字 + 图片）"""
         # 1. 生成文字报告
         text_report = self._generate_text_report(chart_data, gender)
         
@@ -24,7 +22,7 @@ class ReportGenerator:
         return {
             **text_report,
             'hd_image_url': image_url,
-            'blur_image_url': image_url  # V1简化：前端CSS处理模糊
+            'blur_image_url': image_url
         }
     
     def _generate_text_report(self, chart_data, gender):
@@ -32,7 +30,7 @@ class ReportGenerator:
         prompt = self._build_prompt(chart_data, gender)
         
         try:
-            response = openai.ChatCompletion.create(
+            response = self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
                     {
@@ -63,8 +61,6 @@ IMPORTANT: Output in English only."""
     
     def _build_prompt(self, chart_data, gender):
         """构建prompt"""
-        partner_pronoun = "he" if gender == 'female' else "she"
-        
         return f"""Based on this birth chart, create a detailed soulmate profile.
 
 Chart Data:
@@ -150,8 +146,7 @@ Requirements:
         else:
             base_prompt = "Portrait photo of an attractive woman, "
         
-        # 提取关键外貌特征
-        key_features = appearance_description[:200]  # 取前200字符
+        key_features = appearance_description[:200]
         
         full_prompt = f"""{base_prompt}{key_features}
 Professional photography, natural lighting, warm genuine smile,
@@ -159,7 +154,7 @@ looking at camera, soft bokeh background, cinematic quality,
 intimate atmosphere, 35mm lens, photo-realistic"""
         
         try:
-            response = openai.Image.create(
+            response = self.client.images.generate(
                 model="dall-e-3",
                 prompt=full_prompt,
                 size="1024x1024",
@@ -170,7 +165,6 @@ intimate atmosphere, 35mm lens, photo-realistic"""
             return response.data[0].url
             
         except Exception as e:
-            # 如果失败，返回占位图
             print(f"Image generation failed: {str(e)}")
             return "https://via.placeholder.com/1024x1024?text=Soulmate+Portrait"
     
